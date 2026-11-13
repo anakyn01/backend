@@ -49,3 +49,6 @@ npx tsc --init
 3단계: 디렉토리 및 엔티티 코드 작성
 mkdir -p src/entity
 
+
+rm -rf node_modules package-lock.json
+npm cache clean --force

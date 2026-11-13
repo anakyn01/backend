@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { DataSource } from "typeorm";
+import { User } from "./entity/User";
 import { ChatMessage } from "./entity/ChatMessage";
 import { Consultation } from "./entity/Consultation";
 import { VisitorLog } from "./entity/VisitorLog";
@@ -16,7 +17,7 @@ export const AppDataSource = new DataSource({
   database: "database.sqlite",
   synchronize: true,
   logging: false,
-  entities:[ChatMessage, Consultation, VisitorLog, RevenueRecord, ProjectIssue],
+  entities:[User, ChatMessage, Consultation, VisitorLog, RevenueRecord, ProjectIssue],
 });
 
 const app = express();
@@ -48,6 +49,64 @@ app.get("/api/issues", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch project issues" });
   }
 });
+
+// 1. 회원가입 API
+app.post("/api/auth/signup", async (req: any, res: any) => {
+  try {
+    const { lastName, firstName, email, password, phone, zipCode, address, detailAddress } = req.body;
+
+    const userRepository = AppDataSource.getRepository(User);
+
+    // 이메일 중복 확인
+    const existingUser = await userRepository.findOneBy({ email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: "이미 가입된 이메일입니다." });
+    }
+
+    // 유저 생성 및 저장
+    const newUser = userRepository.create({
+      lastName,
+      firstName,
+      email,
+      password, // (참고) 실무에서는 bcrypt.hash 등 암호화 필수
+      phone,
+      zipCode,
+      address,
+      detailAddress,
+    });
+
+    await userRepository.save(newUser);
+
+    return res.status(201).json({ success: true, message: "회원가입이 완료되었습니다." });
+  } catch (error) {
+    console.error("회원가입 에러:", error);
+    return res.status(500).json({ success: false, message: "서버 내부 오류가 발생했습니다." });
+  }
+});
+
+// 2. 로그인 API
+app.post("/api/auth/login", async (req: any, res: any) => {
+  try {
+    const { email, password } = req.body;
+    const userRepository = AppDataSource.getRepository(User);
+
+    const user = await userRepository.findOneBy({ email });
+    if (!user || user.password !== password) {
+      return res.status(401).json({ success: false, message: "이메일 또는 비밀번호가 올바르지 않습니다." });
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      message: "로그인 성공", 
+      user: { id: user.id, email: user.email, name: `${user.lastName}${user.firstName}` } 
+    });
+  } catch (error) {
+    console.error("로그인 에러:", error);
+    return res.status(500).json({ success: false, message: "서버 내부 오류가 발생했습니다." });
+  }
+});
+
+
 
 // 2. 프로젝트 발생건 등록 API
 app.post("/api/issues", async (req, res) => {
