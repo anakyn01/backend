@@ -36,6 +36,7 @@ export const AppDataSource = new DataSource({
     ProjectIssue,
     Portfolio,
     BusinessSection,
+    HeroSection, // ✅ 여기에 추가!
   ],
 });
 
